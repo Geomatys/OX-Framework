@@ -27,12 +27,14 @@
  */
 package org.n52.oxf.sos.adapter.wrapper;
 
+import java.net.URL;
 import static org.n52.oxf.request.MimetypeAwareRequestParameters.*;
 import static org.n52.oxf.sos.adapter.ISOSRequestBuilder.*;
 import static org.n52.oxf.sos.adapter.SOSAdapter.*;
 
 import java.nio.charset.Charset;
 import java.util.Map;
+import org.apache.http.HttpHost;
 
 import org.apache.http.entity.ContentType;
 import org.n52.oxf.OXFException;
@@ -77,6 +79,12 @@ public class SOSWrapper {
 	private int connectionTimeout = -1;
 
 	private int readTimeout = -1;
+        
+        private HttpHost host;
+        
+        private String basicUser;
+        
+        private String basicPassword;
 
     protected SOSWrapper(final ServiceDescriptor serviceDescriptor, final Binding binding) {
 		this.serviceDescriptor = serviceDescriptor;
@@ -92,7 +100,7 @@ public class SOSWrapper {
      * @throws ExceptionReport
      */
     public OperationResult doDescribeSensor(final DescribeSensorParameters parameters) throws OXFException, ExceptionReport {
-        final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion());
+        final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion(), null, host, basicUser, basicPassword);
         if (checkOperationAvailability(DESCRIBE_SENSOR)) {
             final Operation operation = serviceDescriptor.getOperationsMetadata().getOperationByName(DESCRIBE_SENSOR);
             final ParameterContainer parameterContainer = createParameterContainerForDoDescribeSensor(parameters);
@@ -143,7 +151,7 @@ public class SOSWrapper {
 	 */
 	public OperationResult doGetObservation(final GetObservationParameterBuilder_v100 builder) throws OXFException, ExceptionReport {
 		// wrapped SOSAdapter instance
-		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion());
+		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion(), null, host, basicUser, basicPassword);
 		// if there are operations defined
 		if (checkOperationAvailability(GET_OBSERVATION)) {
 			final Operation operation = serviceDescriptor.getOperationsMetadata().getOperationByName(GET_OBSERVATION);
@@ -211,7 +219,7 @@ public class SOSWrapper {
      */
     public OperationResult doRegisterSensor(final RegisterSensorParameters parameters) throws OXFException, ExceptionReport {
         // wrapped SOSAdapter instance
-        final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion());
+        final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion(), null, host, basicUser, basicPassword);
         if (checkOperationAvailability(REGISTER_SENSOR)) {
             final Operation operation = serviceDescriptor.getOperationsMetadata().getOperationByName(REGISTER_SENSOR);
             final ParameterContainer parameterContainer = createParameterContainerForRegisterSensor(parameters);
@@ -227,7 +235,7 @@ public class SOSWrapper {
      * @see {@link #doRegisterSensor(RegisterSensorParameters)}
 	 */
 	public OperationResult doInsertSensor(final InsertSensorParameters insertSensorParameters) throws OXFException, ExceptionReport	{
-		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion());
+		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion(), null, host, basicUser, basicPassword);
 		if (checkOperationAvailability(INSERT_SENSOR)) {
 			final Operation operation = serviceDescriptor.getOperationsMetadata().getOperationByName(INSERT_SENSOR);
 			final ParameterContainer parameterContainer = getParameterContainer(insertSensorParameters);
@@ -268,7 +276,7 @@ public class SOSWrapper {
 	 * @throws ExceptionReport
 	 */
 	public OperationResult doDeleteSensor(final String sensorId) throws OXFException, ExceptionReport {
-		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion());
+		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion(), null, host, basicUser, basicPassword);
 		if (checkOperationAvailability(DELETE_SENSOR)) {
 			final Operation operation = serviceDescriptor.getOperationsMetadata().getOperationByName(DELETE_SENSOR);
 			final ParameterContainer pc = new ParameterContainer();
@@ -311,7 +319,7 @@ public class SOSWrapper {
 	 */
 	public OperationResult doInsertObservation(final InsertObservationParameters parameters) throws OXFException, ExceptionReport {
 		// wrapped SOSAdapter instance
-		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion());
+		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion(), null, host, basicUser, basicPassword);
 		// if there are operations defined
 		if (checkOperationAvailability(INSERT_OBSERVATION)) {
 			final Operation operation = serviceDescriptor.getOperationsMetadata().getOperationByName(INSERT_OBSERVATION);
@@ -414,7 +422,7 @@ public class SOSWrapper {
 	 */
 	public OperationResult doGetObservationById(final GetObservationByIdParameterBuilder_v100 builder) throws OXFException, ExceptionReport {
 		// wrapped SOSAdapter instance
-		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion());
+		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion(), null, host, basicUser, basicPassword);
 		// if there are operations defined
 		if (checkOperationAvailability(GET_OBSERVATION_BY_ID)) {
 			final Operation operation = serviceDescriptor.getOperationsMetadata().getOperationByName(GET_OBSERVATION_BY_ID);
@@ -454,7 +462,7 @@ public class SOSWrapper {
 	 */
 	public OperationResult doGetFeatureOfInterest(final GetFeatureOfInterestParameterBuilder_v100 builder) throws OXFException, ExceptionReport {
 		// wrapped SOSAdapter instance
-		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion());
+		final SOSAdapter adapter = new SOSAdapter(serviceDescriptor.getVersion(), null, host, basicUser, basicPassword);
 		// if there are operations defined
 		if (checkOperationAvailability(GET_FEATURE_OF_INTEREST)) {
 			final Operation operation = serviceDescriptor.getOperationsMetadata().getOperationByName(GET_FEATURE_OF_INTEREST);
@@ -519,5 +527,10 @@ public class SOSWrapper {
 	public void setReadTimeout(final int readTimeout) {
 		this.readTimeout  = readTimeout;
 	}
-
+        
+        public void setBasicAuthCredentials(URL url, String basicUser, String basicPassword) {
+            this.host  = new HttpHost(url.getHost(), url.getPort());
+            this.basicUser = basicUser;
+            this.basicPassword = basicPassword;
+	}
 }

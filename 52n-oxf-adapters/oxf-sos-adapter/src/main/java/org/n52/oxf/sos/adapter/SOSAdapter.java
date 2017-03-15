@@ -48,6 +48,7 @@ import net.opengis.ows.x11.ExceptionReportDocument;
 import net.opengis.ows.x11.ExceptionType;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.entity.ContentType;
 import org.apache.xmlbeans.XmlException;
@@ -71,9 +72,11 @@ import org.n52.oxf.sos.adapter.v100.SOSCapabilitiesMapper_100;
 import org.n52.oxf.sos.adapter.v200.SOSCapabilitiesMapper_200;
 import org.n52.oxf.sos.feature.SOSObservationStore;
 import org.n52.oxf.sos.util.SosUtil;
+import org.n52.oxf.util.web.BasicAuthenticationHttpClient;
 import org.n52.oxf.util.web.GzipEnabledHttpClient;
 import org.n52.oxf.util.web.HttpClient;
 import org.n52.oxf.util.web.HttpClientException;
+import org.n52.oxf.util.web.PreemptiveBasicAuthenticationHttpClient;
 import org.n52.oxf.util.web.ProxyAwareHttpClient;
 import org.n52.oxf.util.web.SimpleHttpClient;
 import org.slf4j.Logger;
@@ -125,6 +128,10 @@ public class SOSAdapter implements IServiceAdapter {
     private ISOSRequestBuilder requestBuilder;
 
     private HttpClient httpClient;
+    
+    private final HttpHost host;
+    private final String basicUser;
+    private final String basicPassword;
 
     /**
      * @param serviceVersion
@@ -133,7 +140,7 @@ public class SOSAdapter implements IServiceAdapter {
     public SOSAdapter(final String serviceVersion) {
         this(serviceVersion, (ISOSRequestBuilder) null);
     }
-
+    
     /**
      * @param serviceVersion
      *        the schema version for which this adapter instance shall be initialized.
@@ -144,7 +151,7 @@ public class SOSAdapter implements IServiceAdapter {
         this(serviceVersion, (ISOSRequestBuilder) null);
         httpClient = httpclient; // override simple client
     }
-
+    
     /**
      * Allows to create an SOSAdapter with custom (non-default) instance of {@link ISOSRequestBuilder}.<br>
      * <br>
@@ -160,7 +167,20 @@ public class SOSAdapter implements IServiceAdapter {
      * @see ISOSRequestBuilder
      */
     public SOSAdapter(final String serviceVersion, final ISOSRequestBuilder requestBuilder) {
-        httpClient = new SimpleHttpClient();
+        this(serviceVersion, requestBuilder, null, null, null);
+    }
+    
+    public SOSAdapter(final String serviceVersion, final ISOSRequestBuilder requestBuilder, final HttpHost host, final String basicUser, final String basicPassword) {
+        this.host = host;
+        this.basicUser = basicUser;
+        this.basicPassword = basicPassword;
+        if (host != null && basicUser != null && basicPassword != null) {
+            PreemptiveBasicAuthenticationHttpClient httpClient = new PreemptiveBasicAuthenticationHttpClient(new SimpleHttpClient());
+            httpClient.provideAuthentication(host, basicUser, basicPassword);
+            this.httpClient = httpClient;
+        } else {
+            this.httpClient = new SimpleHttpClient();
+        }
         this.serviceVersion = serviceVersion;
         if (requestBuilder == null) {
             this.requestBuilder = SOSRequestBuilderFactory.generateRequestBuilder(serviceVersion);
@@ -429,10 +449,26 @@ public class SOSAdapter implements IServiceAdapter {
 			final int readTimeout) throws ExceptionReport,
            OXFException {
 	   if (connectionTimeout > 0 && readTimeout < 1) {
-		   httpClient = new GzipEnabledHttpClient(new ProxyAwareHttpClient(new SimpleHttpClient(connectionTimeout)));
+               HttpClient client;
+                if (host != null && basicUser != null && basicPassword != null) {
+                   PreemptiveBasicAuthenticationHttpClient basicHttpClient = new PreemptiveBasicAuthenticationHttpClient(new SimpleHttpClient(connectionTimeout));
+                   basicHttpClient.provideAuthentication(host, basicUser, basicPassword);
+                   client = basicHttpClient;
+                } else {
+                   client = new SimpleHttpClient(connectionTimeout);
+                }
+                httpClient = new GzipEnabledHttpClient(new ProxyAwareHttpClient(client));
 	   }
 	   if (readTimeout > 0 && connectionTimeout > 1) {
-		   httpClient = new GzipEnabledHttpClient(new ProxyAwareHttpClient(new SimpleHttpClient(connectionTimeout,readTimeout)));
+                HttpClient client;
+                if (host != null && basicUser != null && basicPassword != null) {
+                   PreemptiveBasicAuthenticationHttpClient basicHttpClient = new PreemptiveBasicAuthenticationHttpClient(new SimpleHttpClient(connectionTimeout, readTimeout));
+                   basicHttpClient.provideAuthentication(host, basicUser, basicPassword);
+                   client = basicHttpClient;
+                } else {
+                   client = new SimpleHttpClient(connectionTimeout, readTimeout);
+                }
+                httpClient = new GzipEnabledHttpClient(new ProxyAwareHttpClient(client));
 	   }
 	   return doOperation(operation, parameters);
 
